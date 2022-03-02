@@ -3,7 +3,7 @@
 pkgbase=libassuan
 pkgname=('libassuan' 'libassuan-devel')
 pkgver=2.5.5
-pkgrel=1
+pkgrel=2
 pkgdesc="A IPC library used by some GnuPG related software"
 arch=('i686' 'x86_64')
 url="https://gnupg.org/related_software/libassuan"
@@ -25,6 +25,8 @@ prepare() {
 
 build() {
   cd "${pkgname}-${pkgver}"
+
+  CFLAGS+=" -static-libgcc" \
   ./configure \
     --prefix=/usr \
     --build=${CHOST} \
@@ -42,7 +44,7 @@ check() {
 
 package_libassuan() {
   groups=('libraries')
-  depends=('gcc-libs' 'libgpg-error')
+  depends=('libgpg-error')
   install=libassuan.install
 
   mkdir -p ${pkgdir}/usr/bin
