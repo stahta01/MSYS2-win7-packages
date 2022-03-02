@@ -1,0 +1,92 @@
+# Maintainer: Alexey Pavlov <alexpux@gmail.com>
+
+pkgbase=gpgme
+pkgname=('libgpgme' 'libgpgme-devel' 'libgpgme-python')
+pkgver=1.17.0
+pkgrel=1
+pkgdesc="A C wrapper library for GnuPG"
+arch=('i686' 'x86_64')
+url="https://gnupg.org/related_software/gpgme/"
+license=('LGPL')
+depends=('libassuan' 'libgpg-error' 'gnupg')
+makedepends=('libassuan-devel' 'libgpg-error-devel' 'python-devel' 'swig' 'autotools' 'gcc')
+options=('!libtool' '!emptydirs')
+source=(https://gnupg.org/ftp/gcrypt/${pkgbase}/${pkgbase}-${pkgver}.tar.bz2{,.sig})
+sha256sums=('4ed3f50ceb7be2fce2c291414256b20c9ebf4c03fddb922c88cda99c119a69f5'
+            'SKIP')
+#These might be signed by any of these keys https://gnupg.org/signature_key.html
+validpgpkeys=('D8692123C4065DEA5E0F3AB5249B39D24F25E3B6'
+              '031EC2536E580D8EA286A9F22071B08A33BD3F06'
+              '5B80C5754298F0CB55D8ED6ABCEF7E294B092E28'
+              '6DAA6E64A76D2840571B4902528897B826403ADA')
+
+prepare() {
+  cd ${srcdir}/${pkgbase}-${pkgver}
+
+  autoreconf -ivf
+}
+
+build() {
+  cd ${srcdir}/${pkgbase}-${pkgver}
+
+  CHOST="${CHOST/-msys/-cygwin}" \
+  ./configure \
+    --prefix=/usr \
+    --sysconfdir=/etc \
+    --localstatedir=/var \
+    --build=${CHOST} \
+    --disable-gpgsm-test \
+    --disable-gpgconf-test \
+    --disable-g13-test \
+    --enable-shared \
+    --enable-static \
+    --enable-fixed-path="/usr/bin:/bin:/usr/sbin:/usr/local/bin"
+
+  make no_undefined=-no-undefined
+  make DESTDIR=${srcdir}/dest install
+}
+
+check() {
+  cd ${srcdir}/${pkgbase}-${pkgver}
+  make check || true
+}
+
+package_libgpgme() {
+  groups=('libraries')
+
+  mkdir -p ${pkgdir}/usr/{bin,share}
+  cp -f ${srcdir}/dest/usr/bin/*.exe ${pkgdir}/usr/bin/
+  cp -f ${srcdir}/dest/usr/bin/*.dll ${pkgdir}/usr/bin/
+  #cp -rf ${srcdir}/dest/usr/share/doc ${pkgdir}/usr/share/
+  cp -rf ${srcdir}/dest/usr/share/info ${pkgdir}/usr/share/
+}
+
+package_libgpgme-devel() {
+  pkgdesc="libgpgme headers and libraries"
+  groups=('development')
+  depends=("libgpgme=${pkgver}" 'libassuan-devel' 'libgpg-error-devel')
+  options=('staticlibs')
+
+  mkdir -p ${pkgdir}/usr/{bin,lib,share}
+  cp -f ${srcdir}/dest/usr/bin/*-config ${pkgdir}/usr/bin/
+  cp -rf ${srcdir}/dest/usr/include ${pkgdir}/usr/
+  cp -rf ${srcdir}/dest/usr/lib/cmake ${pkgdir}/usr/lib/
+  cp -rf ${srcdir}/dest/usr/lib/pkgconfig ${pkgdir}/usr/lib/
+  cp -f ${srcdir}/dest/usr/lib/*.a ${pkgdir}/usr/lib/
+  cp -rf ${srcdir}/dest/usr/share/aclocal ${pkgdir}/usr/share/
+  cp -rf ${srcdir}/dest/usr/share/common-lisp ${pkgdir}/usr/share/
+}
+
+package_libgpgme-python() {
+  pkgdesc="libgpgme bindings for Python"
+  groups=('development')
+  depends=("libgpgme=${pkgver}" "python")
+  provides=("libgpgme-python3")
+  conflicts=("libgpgme-python3")
+  replaces=("libgpgme-python3")
+  options=('staticlibs')
+
+  local _pyver=$(/usr/bin/python -c "import sys;sys.stdout.write('.'.join(map(str, sys.version_info[:2])))")
+  mkdir -p ${pkgdir}/usr/lib
+  cp -rf ${srcdir}/dest/usr/lib/python${_pyver} ${pkgdir}/usr/lib
+}
